@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Digitale Zeitungen — Tesseract OCR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600&family=DM+Sans:wght@300;400;500&family=DM+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="logo">Digitale <em>Zeitungen</em></div>
+    <div class="manifest-bar">
+      <input type="text" id="manifestUrl" placeholder="IIIF Manifest URL">
+      <button class="btn" id="btnLoad">Load</button>
+    </div>
+    <span id="modelBadge" style="font-family:var(--mono);font-size:10px;color:#c4922a;white-space:nowrap;flex-shrink:0">○ checking…</span>
+  </header>
+
+  <div class="body-row">
+
+    <!-- Thumbnail strip -->
+    <div class="strip">
+      <div class="strip-head">Pages</div>
+      <div class="thumb-list" id="thumbList">
+        <div class="empty-state"><strong>No manifest</strong>Enter a URL above.</div>
+      </div>
+    </div>
+
+    <!-- Main viewer -->
+    <div class="viewer">
+
+      <div class="viewer-toolbar">
+        <div class="viewer-title" id="viewerTitle">Load a manifest to begin</div>
+        <!-- zoom -->
+        <button class="btn ghost" id="btnZoomIn">＋</button>
+        <button class="btn ghost" id="btnZoomOut">－</button>
+        <button class="btn ghost" id="btnZoomHome">⌂</button>
+        <!-- view toggle -->
+        <div class="btn-group">
+          <button class="tbtn active" data-view="both"    title="Image + facsimile">⊞</button>
+          <button class="tbtn"        data-view="image"   title="Image only">🖼</button>
+          <button class="tbtn"        data-view="edition" title="Facsimile only">≡</button>
+        </div>
+        <!-- lang + OCR -->
+        <select id="engineSelect" class="lang-select" title="OCR engine">
+          <option value="tesseract">Tesseract</option>
+          <option value="easyocr">EasyOCR</option>
+          <option value="trocr_printed">TrOCR printed</option>
+          <option value="trocr_hand">TrOCR handwritten</option>
+          <option value="kraken">Kraken</option>
+        </select>
+        <select id="langSelect" class="lang-select" title="OCR language / script">
+          <option value="deu_frak+deu">🗞 deu Fraktur</option>
+          <option value="deu">📰 deu modern</option>
+          <option value="eng">eng</option>
+          <option value="fra">fra</option>
+          <option value="por">por</option>
+          <option value="nld">nld</option>
+          <option value="lat">lat</option>
+        </select>
+        <button class="btn ocr-btn" id="btnOcr">▶ OCR</button>
+        <button class="btn ghost"   id="btnOcrAll">▶▶ All</button>
+        <button class="btn ghost"   id="btnOverlayText" title="Toggle text overlay on image">Aa</button>
+        <!-- page nav -->
+        <div class="page-nav">
+          <button class="btn ghost" id="btnPrev">‹</button>
+          <span class="page-num" id="pageNum">— / —</span>
+          <button class="btn ghost" id="btnNext">›</button>
+        </div>
+      </div>
+
+      <div class="split-view" id="splitView">
+
+        <!-- A: image viewer -->
+        <div class="viewer-panel">
+          <div class="panel-head">Image viewer — zoom · pan · hover for text</div>
+          <div id="vpwrap" style="flex:1;position:relative;overflow:hidden">
+            <div id="viewport" style="width:100%;height:100%;cursor:grab;background:#111"></div>
+            <div id="ocr-overlay" style="position:absolute;top:0;left:0;pointer-events:none;z-index:10"></div>
+          </div>
+          <div id="ocrStatusBar" class="ocr-statusbar" style="display:none"></div>
+        </div>
+
+        <div class="split-divider"></div>
+
+        <!-- B: facsimile edition -->
+        <div class="edition-panel">
+          <div class="panel-head">
+            Facsimile edition — OCR layout
+            <span id="textWc" style="font-family:var(--mono);font-size:10px;color:var(--ink4)"></span>
+          </div>
+          <div id="facsCanvas">
+            <div id="facsPage">
+              <div class="empty-state">Run OCR to build the facsimile edition.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="split-divider"></div>
+
+        <!-- C: analysis / metadata tabbed panel -->
+        <div class="meta-panel">
+          <div class="side-tabs">
+            <button class="side-tab active" data-tab="analysis">Analysis</button>
+            <button class="side-tab" data-tab="metadata">Metadata</button>
+          </div>
+
+          <!-- Analysis tab -->
+          <div class="tab-content active" id="tabAnalysis">
+            <div class="analysis-toolbar">
+              <span id="selCount" style="font-size:10px;color:var(--ink3)">No blocks selected</span>
+              <div style="display:flex;gap:4px">
+                <button class="btn ghost" id="btnSelAll"   style="font-size:11px;padding:3px 8px">All</button>
+                <button class="btn ghost" id="btnClearSel" style="font-size:11px;padding:3px 8px;color:var(--red)">Clear</button>
+              </div>
+            </div>
+            <div class="analysis-search">
+              <input type="text" id="analysisSearch" placeholder="Search in selected blocks…">
+            </div>
+            <div id="analysisBody">
+              <div class="empty-state"><strong>Select blocks</strong>Click blocks on the facsimile or image to select them.</div>
+            </div>
+          </div>
+
+          <!-- Metadata tab -->
+          <div class="tab-content" id="tabMetadata">
+            <div class="meta-scroll" id="metaPanel">
+              <div class="empty-state"><strong>No manifest loaded</strong></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="/static/js/zeitungen.js"></script>
+</body>
+</html>
