@@ -1,16 +1,35 @@
 # api/ocr.py
 from __future__ import annotations
+
+import json
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel
 
 from services.ocr_service import ocr_image_url
+from core.security import validate_public_http_url
+from core import http_client
+from core.iiif import parse_manifest
 
 router = APIRouter()
 
 class OcrRequest(BaseModel):
     image_url: str
     lang: str = "deu_frak+deu"
+
+
+@router.get("/ocr/status")
+async def ocr_status():
+    info = {"backend": "tesseract", "ready": False}
+    try:
+        import pytesseract
+        info["version"] = str(pytesseract.get_tesseract_version())
+        info["langs"] = pytesseract.get_languages()
+        info["ready"] = True
+    except Exception as e:
+        info["error"] = str(e)
+    return JSONResponse(info)
+
 
 @router.post("/ocr")
 async def run_ocr(req: OcrRequest):
@@ -21,3 +40,43 @@ async def run_ocr(req: OcrRequest):
         raise HTTPException(400, str(e))
     except Exception as e:
         raise HTTPException(500, str(e))
+
+
+@router.get("/ocr/all")
+async def ocr_all_pages(manifest_url: str, lang: str = "deu_frak+deu"):
+    # validate manifest_url (public http/https only)
+    try:
+        validate_public_http_url(manifest_url)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+    client = await http_client.get()
+    try:
+        r = await client.get(manifest_url)
+        r.raise_for_status()
+        manifest = parse_manifest(r.json(), manifest_url)
+    except Exception as exc:
+        raise HTTPException(502, f"Cannot fetch manifest: {exc}")
+
+    pages = manifest.get("pages", [])
+
+    async def stream():
+        total = len(pages)
+        for page in pages:
+            num = page.get("index")
+            url = page.get("image") or ""
+            if not url:
+                yield f"data: {json.dumps({'page':num,'status':'skip'})}\n\n"
+                continue
+
+            yield f"data: {json.dumps({'page':num,'status':'running','total':total})}\n\n"
+
+            try:
+                result = await ocr_image_url(url, lang)
+                yield f"data: {json.dumps({'page':num,'status':'done','result':result})}\n\n"
+            except Exception as exc:
+                yield f"data: {json.dumps({'page':num,'status':'error','error':str(exc)})}\n\n"
+
+        yield f"data: {json.dumps({'status':'complete','total':total})}\n\n"
+
+    return StreamingResponse(stream(), media_type="text/event-stream")
