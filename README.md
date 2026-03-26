@@ -1,93 +1,114 @@
 # Digitale Zeitungen
 
-An open-source digital edition viewer for historical newspapers, combining IIIF Presentation API, Tesseract OCR with historical script support, and an interactive facsimile renderer. My plan is for the future use a Yolo26n fine-tuned model to get the columns right, while still using tesseract, and add some annotations options.
+A lightweight web viewer for **historical newspapers**: load an **IIIF (v2/v3) manifest**, run **Tesseract OCR** (incl. Fraktur), inspect **OCR blocks + words**, render a **facsimile layout**, and create **local JSON annotations**.
+
+Planned: **YOLO column detection** (fine-tuned) for better newspaper layout/columns while still using Tesseract.
 
 ---
 
-## Overview
+## Features
 
-The project has two components:
-
-- **`zeitungen_v5/`** — the main web viewer: load any IIIF manifest, run OCR, inspect the facsimile layout, search text, and examine metadata.
+- Load any IIIF Presentation manifest (v2 or v3)
+- Image viewer (zoom + pan) and OCR overlay
+- Tesseract OCR with preprocessing tuned for old newspapers
+- Facsimile renderer (blocks positioned by OCR coordinates)
+- Select blocks (and optionally words) for inspection
+- **Annotations** (block/word) saved locally as JSON via API
+- Batch OCR over all pages via SSE ("▶▶ All")
+- Language selector (auto-set from manifest when possible)
 
 ---
 
-## zeitungen_v5 — The Viewer
-
-### What it does
-
-1. **Load any IIIF manifest** (v2 or v3) by pasting the URL. Thumbnails appear in the left strip; metadata and links appear in the right panel.
-2. **Zoomable facsimile** — scroll to zoom, drag to pan, no external libraries.
-3. **OCR with Tesseract** — runs locally on your machine. Preprocesses the image (grayscale → autocontrast → sharpen × 2 → Otsu binarisation) before sending to Tesseract, which improves accuracy on yellowed paper and Fraktur typefaces.
-4. **Text overlay** — detected blocks are drawn over the original image as transparent boxes. Hover to read the text; click to select.
-5. **Facsimile edition** — the OCR results are rendered as a typographic reproduction, each block positioned according to its bounding box coordinates.
-6. **Block selection and analysis** — click blocks in either the image overlay or the facsimile edition to add them to a selection. The Analysis tab shows the full text of selected blocks and supports live search with keyword highlighting.
-7. **Batch OCR** — "▶▶ All" runs OCR on every page of the manifest sequentially via Server-Sent Events. Results stream in as each page finishes; thumbnails turn green when done.
-8. **Language selector** — choose between `deu Fraktur` (recommended for pre-1945 German newspapers), `deu modern`, `eng`, `fra`, `por`, `nld`, `lat`. The manifest language field is read automatically and sets the selector on load.
-
-### Project structure
+## Project structure (current)
 
 ```
 zeitungen_v5/
-├── main.py                  FastAPI entry point
+├── app.py
 ├── requirements.txt
-├── core/
-│   ├── iiif.py              IIIF manifest parser (v2 + v3)
-│   ├── docling_ocr.py       Tesseract OCR pipeline with preprocessing
-│   ├── http_client.py       Shared async HTTP client
-│   └── ocr_engines.py       Stubs for EasyOCR / TrOCR (future)
 ├── api/
-│   ├── manifest.py          GET /api/manifest
-│   └── ocr.py               POST /api/ocr · GET /api/ocr/all (SSE) · GET /api/ocr/status
+│   ├── manifest.py
+│   ├── ocr.py
+│   └── annotations.py
+├── core/
+│   ├── http_client.py
+│   ├── iiif.py
+│   ├── security.py
+│   └── ocr/
+│       ├── models.py
+│       ├── pipeline.py
+│       └── tesseract_engine.py
+├── services/
+│   ├── ocr_service.py
+│   └── annotation_store.py
 ├── static/
 │   ├── css/app.css
-│   └── js/zeitungen.js      Single-file frontend (no build step)
+│   └── js/zeitungen.js
 └── templates/
     └── index.html
 ```
 
-### Requirements
-
-**Python packages:**
+Annotations are stored in:
 ```
-pip install fastapi uvicorn httpx Pillow pytesseract
+data/annotations/<hash-of-manifest>.json
 ```
-
-**Tesseract binary (Windows):**
-Download the installer from https://github.com/UB-Mannheim/tesseract/wiki
-
-During installation, select Additional Language Data and check at minimum:
-- `deu` (German)
-- `deu_frak` (German Fraktur — critical for pre-1945 newspapers)
-
-Verify installation:
-```powershell
-& "C:\Program Files\Tesseract-OCR\tesseract.exe" --list-langs
-# Should include: deu  deu_frak  eng
-```
-
-### Running
-
-```powershell
-cd zeitungen_v5
-uvicorn main:app --reload --port 8000
-# Open http://localhost:8000
-```
-
-### Tested IIIF manifests
-
-| Source | URL |
-|--------|-----|
-| Berliner Tageblatt — Issue 1 (IIIF Cookbook) | `https://iiif.io/api/cookbook/recipe/0068-newspaper/newspaper_issue_1-manifest.json` |
-| Berliner Tageblatt — Issue 2 (IIIF Cookbook) | `https://iiif.io/api/cookbook/recipe/0068-newspaper/newspaper_issue_2-manifest.json` |
-| National Library of Wales | `https://damsssl.llgc.org.uk/iiif/2.0/4389767/manifest.json` |
-| Österreichische Nationalbibliothek (pre-1885) | `http://iiif.onb.ac.at/presentation/ANNO/nfp18750101/manifest/` |
-
-### OCR performance notes
-
-- Image preprocessing (autocontrast + Otsu binarisation) significantly helps on aged paper.
-- `deu_frak+deu` uses both the Fraktur and modern German models simultaneously — Tesseract picks the better result per word.
-- OCR time varies: roughly 30–120 seconds per page on CPU depending on image resolution and page complexity.
-- Results are cached per image URL + language for the duration of the server session.
 
 ---
+
+## Requirements
+
+### Python
+Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+### Tesseract (Windows)
+Install from:
+https://github.com/UB-Mannheim/tesseract/wiki
+
+During install, enable at least:
+- `deu`
+- `deu_frak` (important for pre-1945 newspapers)
+
+Verify:
+```powershell
+& "C:\Program Files\Tesseract-OCR\tesseract.exe" --list-langs
+```
+
+---
+
+## Run locally
+
+```bash
+cd zeitungen_v5
+uvicorn app:app --reload --port 8000
+# open http://localhost:8000
+```
+
+---
+
+## API (quick)
+
+- `GET  /api/manifest?url=...`
+- `POST /api/ocr` with JSON `{ "image_url": "...", "lang": "deu_frak+deu" }`
+- `GET  /api/ocr/all?manifest_url=...&lang=...` (SSE)
+- `GET  /api/ocr/status`
+- `GET  /api/annotations?manifest_url=...`
+- `POST /api/annotations` (stores annotation in local JSON)
+
+---
+
+## Tested manifests
+
+- IIIF Cookbook Newspaper Issue 1  
+  https://iiif.io/api/cookbook/recipe/0068-newspaper/newspaper_issue_1-manifest.json
+- IIIF Cookbook Newspaper Issue 2  
+  https://iiif.io/api/cookbook/recipe/0068-newspaper/newspaper_issue_2-manifest.json
+
+---
+
+## Notes for future changes
+
+- OCR output is designed to stay stable: **blocks + words** with normalized bounding boxes.
+- Layout detection is currently Tesseract-based; future plan is to add **YOLO column detection** as a layout stage.
+- Annotations are intentionally simple (local JSON) to keep the project hackable.
