@@ -310,3 +310,19 @@ header {
   background: rgba(196,146,42,.12);
   z-index: 3;
 }
+
+.ocr-word {
+  position: absolute;
+  border: 1px dashed rgba(255,255,255,.25);
+  border-radius: 2px;
+  pointer-events: all;
+}
+.ocr-word:hover {
+  border-color: var(--gold);
+  background: rgba(196,146,42,.18);
+  z-index: 4;
+}
+.ocr-word.selected {
+  border-color: var(--gold);
+  background: rgba(196,146,42,.35);
+}

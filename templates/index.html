@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Digitale Zeitungen — Tesseract OCR</title>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600&family=DM+Sans:wght@300;400;500&family=DM+Mono&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/css/app.css">
@@ -17,12 +18,14 @@
       <input type="text" id="manifestUrl" placeholder="IIIF Manifest URL">
       <button class="btn" id="btnLoad">Load</button>
     </div>
-    <span id="modelBadge" style="font-family:var(--mono);font-size:10px;color:#c4922a;white-space:nowrap;flex-shrink:0">○ checking…</span>
+    <span id="modelBadge" style="font-family:var(--mono);font-size:10px;color:#c4922a;white-space:nowrap;flex-shrink:0">
+      ○ checking…
+    </span>
   </header>
 
   <div class="body-row">
 
-    <!-- Thumbnail strip -->
+    <!-- Thumbnails -->
     <div class="strip">
       <div class="strip-head">Pages</div>
       <div class="thumb-list" id="thumbList">
@@ -35,20 +38,21 @@
 
       <div class="viewer-toolbar">
         <div class="viewer-title" id="viewerTitle">Load a manifest to begin</div>
-        <!-- zoom -->
-        <button class="btn ghost" id="btnZoomIn">＋</button>
-        <button class="btn ghost" id="btnZoomOut">－</button>
-        <button class="btn ghost" id="btnZoomHome">⌂</button>
-        <!-- view toggle -->
+
+        <button class="btn ghost" id="btnZoomIn" title="Zoom in">＋</button>
+        <button class="btn ghost" id="btnZoomOut" title="Zoom out">－</button>
+        <button class="btn ghost" id="btnZoomHome" title="Fit to screen">⌂</button>
+
         <div class="btn-group">
-          <button class="tbtn active" data-view="both"    title="Image + facsimile">⊞</button>
-          <button class="tbtn"        data-view="image"   title="Image only">🖼</button>
-          <button class="tbtn"        data-view="edition" title="Facsimile only">≡</button>
+          <button class="tbtn active" data-view="both" title="Image + facsimile">⊞</button>
+          <button class="tbtn" data-view="image" title="Image only">🖼</button>
+          <button class="tbtn" data-view="edition" title="Facsimile only">≡</button>
         </div>
-        <!-- lang + OCR -->
+
         <select id="engineSelect" class="lang-select" title="OCR engine">
           <option value="tesseract">Tesseract</option>
         </select>
+
         <select id="langSelect" class="lang-select" title="OCR language / script">
           <option value="deu_frak+deu">🗞 deu Fraktur</option>
           <option value="deu">📰 deu modern</option>
@@ -58,32 +62,38 @@
           <option value="nld">nld</option>
           <option value="lat">lat</option>
         </select>
-        <button class="btn ocr-btn" id="btnOcr">▶ OCR</button>
-        <button class="btn ghost"   id="btnOcrAll">▶▶ All</button>
-        <button class="btn ghost"   id="btnOverlayText" title="Toggle text overlay on image">Aa</button>
-        <!-- page nav -->
+
+        <button class="btn ocr-btn" id="btnOcr" title="Run OCR on current page">▶ OCR</button>
+        <button class="btn ghost" id="btnOcrAll" title="Run OCR on all pages">▶▶ All</button>
+
+        <button class="btn ghost" id="btnOverlayText" title="Toggle text overlay">Aa</button>
+        <button class="btn ghost" id="btnOverlayWords" title="Toggle word boxes">W</button>
+        <button class="btn ghost" id="btnSelectMode" title="Toggle selection mode">Block</button>
+
         <div class="page-nav">
-          <button class="btn ghost" id="btnPrev">‹</button>
+          <button class="btn ghost" id="btnPrev" title="Previous page">‹</button>
           <span class="page-num" id="pageNum">— / —</span>
-          <button class="btn ghost" id="btnNext">›</button>
+          <button class="btn ghost" id="btnNext" title="Next page">›</button>
         </div>
       </div>
 
       <div class="split-view" id="splitView">
 
-        <!-- A: image viewer -->
+        <!-- Image viewer -->
         <div class="viewer-panel">
-          <div class="panel-head">Image viewer — zoom · pan · hover for text</div>
+          <div class="panel-head">Image viewer — zoom · pan · right-click to annotate</div>
+
           <div id="vpwrap" style="flex:1;position:relative;overflow:hidden">
             <div id="viewport" style="width:100%;height:100%;cursor:grab;background:#111"></div>
             <div id="ocr-overlay" style="position:absolute;top:0;left:0;pointer-events:none;z-index:10"></div>
           </div>
+
           <div id="ocrStatusBar" class="ocr-statusbar" style="display:none"></div>
         </div>
 
         <div class="split-divider"></div>
 
-        <!-- B: facsimile edition -->
+        <!-- Facsimile -->
         <div class="edition-panel">
           <div class="panel-head">
             Facsimile edition — OCR layout
@@ -98,19 +108,18 @@
 
         <div class="split-divider"></div>
 
-        <!-- C: analysis / metadata tabbed panel -->
+        <!-- Right panel -->
         <div class="meta-panel">
           <div class="side-tabs">
             <button class="side-tab active" data-tab="analysis">Analysis</button>
             <button class="side-tab" data-tab="metadata">Metadata</button>
           </div>
 
-          <!-- Analysis tab -->
           <div class="tab-content active" id="tabAnalysis">
             <div class="analysis-toolbar">
-              <span id="selCount" style="font-size:10px;color:var(--ink3)">No blocks selected</span>
+              <span id="selCount" style="font-size:10px;color:var(--ink3)">No selection</span>
               <div style="display:flex;gap:4px">
-                <button class="btn ghost" id="btnSelAll"   style="font-size:11px;padding:3px 8px">All</button>
+                <button class="btn ghost" id="btnSelAll" style="font-size:11px;padding:3px 8px">All</button>
                 <button class="btn ghost" id="btnClearSel" style="font-size:11px;padding:3px 8px;color:var(--red)">Clear</button>
               </div>
             </div>
@@ -118,11 +127,10 @@
               <input type="text" id="analysisSearch" placeholder="Search in selected blocks…">
             </div>
             <div id="analysisBody">
-              <div class="empty-state"><strong>Select blocks</strong>Click blocks on the facsimile or image to select them.</div>
+              <div class="empty-state"><strong>Select blocks or words</strong>Left-click selects. Right-click saves an annotation.</div>
             </div>
           </div>
 
-          <!-- Metadata tab -->
           <div class="tab-content" id="tabMetadata">
             <div class="meta-scroll" id="metaPanel">
               <div class="empty-state"><strong>No manifest loaded</strong></div>
