@@ -16,6 +16,7 @@ router = APIRouter()
 class OcrRequest(BaseModel):
     image_url: str
     lang: str = "deu_frak+deu"
+    force: bool = False   # if True, bypass cache and re-run
 
 
 @router.get("/ocr/status")
@@ -34,6 +35,10 @@ async def ocr_status():
 @router.post("/ocr")
 async def run_ocr(req: OcrRequest):
     try:
+        if req.force:
+            from services.ocr_service import _OCR_CACHE, _cache_key, PIPELINE_VERSION
+            key = _cache_key(req.image_url, req.lang)
+            if key in _OCR_CACHE: del _OCR_CACHE[key]
         result = await ocr_image_url(req.image_url, req.lang)
         return JSONResponse(result)
     except ValueError as e:

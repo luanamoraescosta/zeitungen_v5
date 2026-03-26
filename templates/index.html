@@ -3,10 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Digitale Zeitungen — Tesseract OCR</title>
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600&family=DM+Sans:wght@300;400;500&family=DM+Mono&display=swap" rel="stylesheet">
+<title>Digitale Zeitungen</title>
 <link rel="stylesheet" href="/static/css/app.css">
 </head>
 <body>
@@ -18,9 +15,7 @@
       <input type="text" id="manifestUrl" placeholder="IIIF Manifest URL">
       <button class="btn" id="btnLoad">Load</button>
     </div>
-    <span id="modelBadge" style="font-family:var(--mono);font-size:10px;color:#c4922a;white-space:nowrap;flex-shrink:0">
-      ○ checking…
-    </span>
+    <span id="modelBadge" style="font-family:var(--mono);font-size:10px;color:#c4922a;white-space:nowrap;flex-shrink:0">○ checking…</span>
   </header>
 
   <div class="body-row">
@@ -35,25 +30,17 @@
 
     <!-- Main viewer -->
     <div class="viewer">
-
       <div class="viewer-toolbar">
         <div class="viewer-title" id="viewerTitle">Load a manifest to begin</div>
-
-        <button class="btn ghost" id="btnZoomIn" title="Zoom in">＋</button>
-        <button class="btn ghost" id="btnZoomOut" title="Zoom out">－</button>
-        <button class="btn ghost" id="btnZoomHome" title="Fit to screen">⌂</button>
-
+        <button class="btn ghost" id="btnZoomIn">＋</button>
+        <button class="btn ghost" id="btnZoomOut">－</button>
+        <button class="btn ghost" id="btnZoomHome">⌂</button>
         <div class="btn-group">
-          <button class="tbtn active" data-view="both" title="Image + facsimile">⊞</button>
-          <button class="tbtn" data-view="image" title="Image only">🖼</button>
-          <button class="tbtn" data-view="edition" title="Facsimile only">≡</button>
+          <button class="tbtn active" data-view="both"    title="Image + facsimile">⊞</button>
+          <button class="tbtn"        data-view="image"   title="Image only">🖼</button>
+          <button class="tbtn"        data-view="edition" title="Facsimile only">≡</button>
         </div>
-
-        <select id="engineSelect" class="lang-select" title="OCR engine">
-          <option value="tesseract">Tesseract</option>
-        </select>
-
-        <select id="langSelect" class="lang-select" title="OCR language / script">
+        <select id="langSelect" class="lang-select" title="OCR language">
           <option value="deu_frak+deu">deu Fraktur</option>
           <option value="deu">deu modern</option>
           <option value="eng">eng</option>
@@ -62,18 +49,17 @@
           <option value="nld">nld</option>
           <option value="lat">lat</option>
         </select>
-
-        <button class="btn ocr-btn" id="btnOcr" title="Run OCR on current page">▶ OCR</button>
-        <button class="btn ghost" id="btnOcrAll" title="Run OCR on all pages">▶▶ All</button>
-
-        <button class="btn ghost" id="btnOverlayText" title="Toggle text overlay">Aa</button>
-        <button class="btn ghost" id="btnOverlayWords" title="Toggle word boxes">W</button>
-        <button class="btn ghost" id="btnSelectMode" title="Toggle selection mode">Block</button>
-
+        <button class="btn ocr-btn" id="btnOcr">▶ OCR</button>
+        <button class="btn ghost"   id="btnRerun" title="Re-run OCR (force)">↺</button>
+        <button class="btn ghost"   id="btnOcrAll">▶▶ All</button>
+        <button class="btn ghost"   id="btnOverlayText" title="Toggle text overlay">Aa</button>
+        <button class="btn ghost"   id="btnOverlayWords" title="Toggle word boxes">W</button>
+        <button class="btn ghost"   id="btnSelectMode" title="Toggle block/word selection">Block</button>
+        <button class="btn ghost"   id="btnPenMode" title="Pen annotation mode">✏</button>
         <div class="page-nav">
-          <button class="btn ghost" id="btnPrev" title="Previous page">‹</button>
+          <button class="btn ghost" id="btnPrev">‹</button>
           <span class="page-num" id="pageNum">— / —</span>
-          <button class="btn ghost" id="btnNext" title="Next page">›</button>
+          <button class="btn ghost" id="btnNext">›</button>
         </div>
       </div>
 
@@ -81,13 +67,15 @@
 
         <!-- Image viewer -->
         <div class="viewer-panel">
-          <div class="panel-head">Image viewer — zoom · pan · right-click to annotate</div>
-
+          <div class="panel-head">
+            Image viewer — zoom · pan · click to select
+            <span id="penModeLabel" style="color:var(--accent);display:none">✏ PEN MODE</span>
+          </div>
           <div id="vpwrap" style="flex:1;position:relative;overflow:hidden">
-            <div id="viewport" style="width:100%;height:100%;cursor:grab;background:#111"></div>
+            <div id="viewport" style="width:100%;height:100%;cursor:grab;background:#0a0806"></div>
+            <svg id="pen-layer" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:15;overflow:visible"></svg>
             <div id="ocr-overlay" style="position:absolute;top:0;left:0;pointer-events:none;z-index:10"></div>
           </div>
-
           <div id="ocrStatusBar" class="ocr-statusbar" style="display:none"></div>
         </div>
 
@@ -96,14 +84,12 @@
         <!-- Facsimile -->
         <div class="edition-panel">
           <div class="panel-head">
-            Facsimile edition — OCR layout
+            Facsimile edition
             <span id="textWc" style="font-family:var(--mono);font-size:10px;color:var(--ink4)"></span>
           </div>
-          <div id="facsCanvas">
-            <div id="facsPage">
-              <div class="empty-state">Run OCR to build the facsimile edition.</div>
-            </div>
-          </div>
+          <div id="facsCanvas"><div id="facsPage">
+            <div class="empty-state">Run OCR to build the facsimile edition.</div>
+          </div></div>
         </div>
 
         <div class="split-divider"></div>
@@ -112,25 +98,42 @@
         <div class="meta-panel">
           <div class="side-tabs">
             <button class="side-tab active" data-tab="analysis">Analysis</button>
+            <button class="side-tab" data-tab="annotations">Annotations</button>
             <button class="side-tab" data-tab="metadata">Metadata</button>
           </div>
 
+          <!-- Analysis -->
           <div class="tab-content active" id="tabAnalysis">
             <div class="analysis-toolbar">
               <span id="selCount" style="font-size:10px;color:var(--ink3)">No selection</span>
               <div style="display:flex;gap:4px">
-                <button class="btn ghost" id="btnSelAll" style="font-size:11px;padding:3px 8px">All</button>
-                <button class="btn ghost" id="btnClearSel" style="font-size:11px;padding:3px 8px;color:var(--red)">Clear</button>
+                <button class="btn ghost" id="btnSelAll"   style="font-size:11px;padding:3px 7px">All</button>
+                <button class="btn ghost" id="btnClearSel" style="font-size:11px;padding:3px 7px;color:var(--red)">Clear</button>
               </div>
             </div>
             <div class="analysis-search">
-              <input type="text" id="analysisSearch" placeholder="Search in selected blocks…">
+              <input type="text" id="analysisSearch" placeholder="Search and highlight…">
             </div>
             <div id="analysisBody">
-              <div class="empty-state"><strong>Select blocks or words</strong>Left-click selects. Right-click saves an annotation.</div>
+              <div class="empty-state"><strong>Select blocks</strong>Click blocks in the image or facsimile.</div>
             </div>
           </div>
 
+          <!-- Annotations -->
+          <div class="tab-content" id="tabAnnotations">
+            <div class="ann-actions">
+              <label class="btn ghost" style="font-size:11px;padding:3px 8px;cursor:pointer;text-align:center">
+                ↑ Import JSON
+                <input type="file" id="importAnnotations" accept=".json" style="display:none">
+              </label>
+              <button class="btn ghost" id="btnExportAnnotations" style="font-size:11px;padding:3px 8px">↓ Export</button>
+            </div>
+            <div id="annotationsBody" style="flex:1;overflow-y:auto">
+              <div class="empty-state"><strong>No annotations</strong>Select blocks or use the ✏ pen tool.</div>
+            </div>
+          </div>
+
+          <!-- Metadata -->
           <div class="tab-content" id="tabMetadata">
             <div class="meta-scroll" id="metaPanel">
               <div class="empty-state"><strong>No manifest loaded</strong></div>
@@ -140,6 +143,25 @@
 
       </div>
     </div>
+  </div>
+</div>
+
+<!-- Pen annotation modal -->
+<div class="modal-overlay" id="modalOverlay"></div>
+<div class="pen-modal" id="penModal">
+  <h3>Annotate drawing</h3>
+  <label>Note</label>
+  <textarea id="penNote" placeholder="Description, observation…"></textarea>
+  <label>Classification</label>
+  <div class="class-pills">
+    <div class="class-pill active" data-cls="A">A</div>
+    <div class="class-pill"       data-cls="B">B</div>
+    <div class="class-pill"       data-cls="C">C</div>
+    <div class="class-pill"       data-cls="D">D</div>
+  </div>
+  <div class="pen-modal-btns">
+    <button class="btn" id="btnPenSave">Save annotation</button>
+    <button class="btn ghost" id="btnPenCancel">Discard</button>
   </div>
 </div>
 
