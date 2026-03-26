@@ -1,6 +1,6 @@
 # Digitale Zeitungen
 
-An open-source digital edition viewer for historical newspapers, combining IIIF Presentation API, Tesseract OCR with historical script support, and an interactive facsimile renderer. 
+An open-source digital edition viewer for historical newspapers, combining IIIF Presentation API, Tesseract OCR with historical script support, and an interactive facsimile renderer. My plan is for the future use a Yolo26n fine-tuned model to get the columns right, while still using tesseract, and add some annotations options.
 
 ---
 
