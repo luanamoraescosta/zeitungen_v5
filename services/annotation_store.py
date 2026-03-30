@@ -32,3 +32,17 @@ def add_annotation(manifest_url: str, ann: dict[str, Any]) -> dict[str, Any]:
 
 def list_annotations(manifest_url: str) -> list[dict[str, Any]]:
     return load_doc(manifest_url).get("annotations", [])
+
+def delete_annotations(manifest_url: str, *, page: int | None = None) -> int:
+    doc = load_doc(manifest_url)
+    anns = doc.get("annotations", [])
+    if page is None:
+        removed = len(anns)
+        doc["annotations"] = []
+    else:
+        kept = [a for a in anns if int(a.get("page", 0)) != int(page)]
+        removed = len(anns) - len(kept)
+        doc["annotations"] = kept
+    doc["updated_at"] = int(time.time())
+    save_doc(manifest_url, doc)
+    return removed

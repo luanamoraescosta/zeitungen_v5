@@ -32,14 +32,17 @@
     <div class="viewer">
       <div class="viewer-toolbar">
         <div class="viewer-title" id="viewerTitle">Load a manifest to begin</div>
+
         <button class="btn ghost" id="btnZoomIn">＋</button>
         <button class="btn ghost" id="btnZoomOut">－</button>
         <button class="btn ghost" id="btnZoomHome">⌂</button>
+
         <div class="btn-group">
           <button class="tbtn active" data-view="both"    title="Image + facsimile">⊞</button>
           <button class="tbtn"        data-view="image"   title="Image only">🖼</button>
           <button class="tbtn"        data-view="edition" title="Facsimile only">≡</button>
         </div>
+
         <select id="langSelect" class="lang-select" title="OCR language">
           <option value="deu_frak+deu">deu Fraktur</option>
           <option value="deu">deu modern</option>
@@ -49,13 +52,15 @@
           <option value="nld">nld</option>
           <option value="lat">lat</option>
         </select>
+
         <button class="btn ocr-btn" id="btnOcr">▶ OCR</button>
+        <button class="btn ocr-btn"   id="btnOcrAll">▶▶ OCR All</button>
         <button class="btn ghost"   id="btnRerun" title="Re-run OCR (force)">↺</button>
-        <button class="btn ghost"   id="btnOcrAll">▶▶ All</button>
+
         <button class="btn ghost"   id="btnOverlayText" title="Toggle text overlay">Aa</button>
-        <button class="btn ghost"   id="btnOverlayWords" title="Toggle word boxes">W</button>
-        <button class="btn ghost"   id="btnSelectMode" title="Toggle block/word selection">Block</button>
+
         <button class="btn ghost"   id="btnPenMode" title="Pen annotation mode">✏</button>
+
         <div class="page-nav">
           <button class="btn ghost" id="btnPrev">‹</button>
           <span class="page-num" id="pageNum">— / —</span>
@@ -68,15 +73,19 @@
         <!-- Image viewer -->
         <div class="viewer-panel">
           <div class="panel-head">
-            Image viewer — zoom · pan · click to select
+            Image viewer — zoom · pan
             <span id="penModeLabel" style="color:var(--accent);display:none">✏ PEN MODE</span>
+            <span id="textModeLabel" style="color:var(--gold);display:none;margin-left:10px">✎ TEXT MODE</span>
           </div>
+
           <div id="vpwrap" style="flex:1;position:relative;overflow:hidden">
             <div id="viewport" style="width:100%;height:100%;cursor:grab;background:#0a0806"></div>
             <svg id="pen-layer" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:15;overflow:visible"></svg>
             <div id="ocr-overlay" style="position:absolute;top:0;left:0;pointer-events:none;z-index:10"></div>
           </div>
+
           <div id="ocrStatusBar" class="ocr-statusbar" style="display:none"></div>
+          <div id="ocrAllBar" class="ocr-statusbar" style="display:none"></div>
         </div>
 
         <div class="split-divider"></div>
@@ -102,34 +111,65 @@
             <button class="side-tab" data-tab="metadata">Metadata</button>
           </div>
 
-          <!-- Analysis -->
+          <!-- Analysis (UNCHANGED) -->
           <div class="tab-content active" id="tabAnalysis">
             <div class="analysis-toolbar">
-              <span id="selCount" style="font-size:10px;color:var(--ink3)">No selection</span>
-              <div style="display:flex;gap:4px">
-                <button class="btn ghost" id="btnSelAll"   style="font-size:11px;padding:3px 7px">All</button>
-                <button class="btn ghost" id="btnClearSel" style="font-size:11px;padding:3px 7px;color:var(--red)">Clear</button>
-              </div>
+              <span id="matchCount" style="font-size:10px;color:var(--ink3)">No search</span>
+
+              <select id="searchScope" class="lang-select" style="height:28px" title="Search scope">
+                <option value="page">This page</option>
+                <option value="issue">Whole issue</option>
+              </select>
+
+              <button class="btn ghost" id="btnRunSearch" style="font-size:11px;padding:3px 7px">
+                Search
+              </button>
+
+              <button class="btn ghost" id="btnExportMatches" style="font-size:11px;padding:3px 7px">
+                Export results
+              </button>
             </div>
+
             <div class="analysis-search">
-              <input type="text" id="analysisSearch" placeholder="Search and highlight…">
+              <input type="text" id="analysisSearch" placeholder="Keyword search…">
             </div>
+
             <div id="analysisBody">
-              <div class="empty-state"><strong>Select blocks</strong>Click blocks in the image or facsimile.</div>
+              <div class="empty-state">
+                <strong>Keyword search</strong>
+                Type a keyword and click “Search”.
+              </div>
             </div>
           </div>
 
           <!-- Annotations -->
           <div class="tab-content" id="tabAnnotations">
             <div class="ann-actions">
+              <button class="btn ghost" id="btnAnnotateText" style="font-size:11px;padding:3px 8px">
+                + Annotate text
+              </button>
+              <button class="btn ghost" id="btnClearAnnotations" style="font-size:11px;padding:3px 8px;color:var(--red)">
+                Clear
+              </button>
+            </div>
+
+            <div class="ann-actions">
               <label class="btn ghost" style="font-size:11px;padding:3px 8px;cursor:pointer;text-align:center">
                 ↑ Import JSON
                 <input type="file" id="importAnnotations" accept=".json" style="display:none">
               </label>
-              <button class="btn ghost" id="btnExportAnnotations" style="font-size:11px;padding:3px 8px">↓ Export</button>
+              <button class="btn ghost" id="btnExportAnnotations" style="font-size:11px;padding:3px 8px">
+                ↓ Export JSON
+              </button>
             </div>
+
+            <div class="ann-actions">
+              <button class="btn ghost" id="btnExportTEI" style="font-size:11px;padding:3px 8px">↓ Export TEI XML</button>
+              <button class="btn ghost" id="btnExportCrops" style="font-size:11px;padding:3px 8px">↓ Export crops (PNG)</button>
+            </div>
+
             <div id="annotationsBody" style="flex:1;overflow-y:auto">
-              <div class="empty-state"><strong>No annotations</strong>Select blocks or use the ✏ pen tool.</div>
+              <div class="empty-state"><strong>No annotations</strong>Use ✏ pen or “Annotate text”.</div>
             </div>
           </div>
 
@@ -146,22 +186,57 @@
   </div>
 </div>
 
+<!-- Datalists for autocomplete -->
+<datalist id="labelSuggestions"></datalist>
+<datalist id="classSuggestions"></datalist>
+
 <!-- Pen annotation modal -->
 <div class="modal-overlay" id="modalOverlay"></div>
 <div class="pen-modal" id="penModal">
-  <h3>Annotate drawing</h3>
+  <h3>Annotate image</h3>
+
+  <label>Label</label>
+  <input id="penLabel" list="labelSuggestions" placeholder="e.g., advertisement, headline, dress…" />
+
+  <label>Class (optional)</label>
+  <input id="penClassInput" list="classSuggestions" placeholder="e.g., person, place, topic…" />
+
   <label>Note</label>
   <textarea id="penNote" placeholder="Description, observation…"></textarea>
-  <label>Classification</label>
-  <div class="class-pills">
-    <div class="class-pill active" data-cls="A">A</div>
-    <div class="class-pill"       data-cls="B">B</div>
-    <div class="class-pill"       data-cls="C">C</div>
-    <div class="class-pill"       data-cls="D">D</div>
-  </div>
+
   <div class="pen-modal-btns">
     <button class="btn" id="btnPenSave">Save annotation</button>
     <button class="btn ghost" id="btnPenCancel">Discard</button>
+  </div>
+</div>
+
+<!-- Text annotation modal -->
+<div class="modal-overlay" id="textModalOverlay"></div>
+<div class="pen-modal" id="textModal">
+  <h3>Annotate text</h3>
+
+  <div style="font-size:11px;color:var(--ink3);margin-bottom:10px">
+    Text mode is ON. Click a text block on the image or facsimile, then select an excerpt below and write your note.
+  </div>
+
+  <label>Label</label>
+  <input id="textAnnLabel" list="labelSuggestions" placeholder="e.g., advertisement, headline…" />
+
+  <label>Class (optional)</label>
+  <input id="textAnnClass" list="classSuggestions" placeholder="e.g., person, place, topic…" />
+
+  <label>Block text (select excerpt)</label>
+  <textarea id="textAnnBlockText" style="height:180px"></textarea>
+
+  <label>Selected excerpt</label>
+  <textarea id="textAnnExact" placeholder="Filled automatically when you select text (optional)."></textarea>
+
+  <label>Note</label>
+  <textarea id="textAnnNote" placeholder="Your note/comment…"></textarea>
+
+  <div class="pen-modal-btns">
+    <button class="btn" id="btnTextAnnSave">Save</button>
+    <button class="btn ghost" id="btnTextAnnCancel">Cancel</button>
   </div>
 </div>
 

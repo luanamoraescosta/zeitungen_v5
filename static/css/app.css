@@ -279,6 +279,17 @@ header {
   padding:8px 12px; border-bottom: var(--border);
   flex-shrink:0; background:var(--paper);
 }
+.analysis-toolbar{
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.analysis-toolbar .btn,
+.analysis-toolbar .lang-select{
+  height: 32px;
+}
+.analysis-toolbar .btn{
+  width: auto;
+}
 .analysis-search { display:flex; gap:6px; padding:8px 12px; flex-shrink:0; border-bottom:var(--border); background: var(--paper2); }
 .analysis-search input {
   flex:1; background:#fff; border: 1px solid var(--paper3); border-radius:var(--r);
@@ -372,7 +383,18 @@ header {
 .pen-modal-btns .btn { flex:1; padding: 8px 0; }
 .modal-overlay { position:fixed; inset:0; background:rgba(33,28,24,.4); backdrop-filter: blur(2px); z-index:199; opacity:0; visibility:hidden; transition: all .2s; }
 .modal-overlay.show { opacity:1; visibility:visible; }
+/* Make modals scrollable and keep buttons reachable */
+.pen-modal{
+  max-height: 90vh;
+  overflow: auto;
+}
 
+.pen-modal .pen-modal-btns{
+  position: sticky;
+  bottom: 0;
+  background: var(--paper);
+  padding-top: 12px;
+}
 /* ── Misc ────────────────────────────────────────────────────────── */
 .empty-state { padding:32px 20px; text-align:center; color:var(--ink4); font-size:13px; line-height:1.6; }
 .empty-state strong { display:block; font-family:var(--serif); font-size:16px; font-weight:500; color:var(--ink2); margin-bottom:8px; }
@@ -387,3 +409,47 @@ header {
 ::-webkit-scrollbar-thumb { background:rgba(120,102,86,0.3); border-radius:6px; }
 ::-webkit-scrollbar-thumb:hover { background:rgba(120,102,86,0.6); }
 .paper ::-webkit-scrollbar-thumb { background: var(--paper3); }
+
+
+/* ADDED: keyword match highlight */
+.facs-block.match { outline: 2px solid var(--gold); outline-offset: -2px; }
+.ocr-block.match  { box-shadow: 0 0 0 2px rgba(184,130,37,.55) inset; }
+
+/* ADDED: pen modal label input */
+.pen-modal input{
+  width:100%;
+  border: 1px solid var(--paper3);
+  border-radius: var(--r);
+  padding:10px;
+  font-family: var(--mono);
+  font-size:12px;
+  background:#fff;
+  margin-bottom: 16px;
+  transition: border .2s;
+}
+.pen-modal input:focus{
+  outline:none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+/* text annotation mode: make blocks clickable */
+.text-annotate-on .ocr-block{
+  pointer-events: all !important;
+  cursor: text;
+}
+.text-annotate-on .ocr-block:hover{
+  background: rgba(184,130,37,.12) !important;
+  border-color: var(--gold) !important;
+}
+
+/* small info dot for annotated blocks */
+.ocr-block.annotated::after{
+  content:'';
+  position:absolute;
+  top:4px; right:4px;
+  width:8px; height:8px;
+  border-radius:50%;
+  background: var(--gold);
+  box-shadow: 0 0 4px rgba(0,0,0,.3);
+}

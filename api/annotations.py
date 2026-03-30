@@ -1,17 +1,18 @@
-# api/annotations.py
 from __future__ import annotations
 import time, uuid
 from typing import Literal, Optional
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from services.annotation_store import add_annotation, list_annotations, delete_annotations
+
 
 from services.annotation_store import add_annotation, list_annotations
 from core.security import validate_public_http_url
 
 router = APIRouter()
 
-TargetType = Literal["block", "word", "image", "text_range"]
+TargetType = Literal["block", "word", "image", "text_range", "drawing"]  # <-- added drawing
 
 class ImageTarget(BaseModel):
     image_url: str
@@ -34,7 +35,7 @@ class AnnotationIn(BaseModel):
     page: int = Field(..., ge=1)
     target_type: TargetType
     target: dict
-    body: dict = Field(default_factory=dict)   # o que você quiser (label, tags, comment, etc.)
+    body: dict = Field(default_factory=dict)
 
 class AnnotationOut(BaseModel):
     id: str
@@ -50,7 +51,6 @@ async def get_annotations(manifest_url: str = Query(...)):
     try:
         validate_public_http_url(manifest_url)
     except ValueError:
-        # manifest pode ser público; se você preferir permitir local em dev, remova isso
         raise HTTPException(400, "Invalid manifest_url")
     return JSONResponse(list_annotations(manifest_url))
 
@@ -72,3 +72,13 @@ async def post_annotation(ann: AnnotationIn):
     }
     add_annotation(ann.manifest_url, out)
     return JSONResponse(out)
+
+@router.delete("/annotations")
+async def delete_anns(manifest_url: str = Query(...), page: Optional[int] = Query(None)):
+    try:
+        validate_public_http_url(manifest_url)
+    except ValueError:
+        raise HTTPException(400, "Invalid manifest_url")
+
+    removed = delete_annotations(manifest_url, page=page)
+    return JSONResponse({"removed": removed, "page": page})

@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from api import manifest, ocr, annotations
+from api import crops  # <-- added
 from core import http_client
 
 app = FastAPI(title="Digitale Zeitungen — Tesseract OCR", version="0.6.0")
@@ -24,6 +25,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.include_router(manifest.router, prefix="/api")
 app.include_router(ocr.router, prefix="/api")
 app.include_router(annotations.router, prefix="/api")
+app.include_router(crops.router, prefix="/api")  # <-- added
 
 @app.on_event("shutdown")
 async def shutdown():

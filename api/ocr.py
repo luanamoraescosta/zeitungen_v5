@@ -1,7 +1,7 @@
-# api/ocr.py
 from __future__ import annotations
 
 import json
+import time
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
@@ -18,7 +18,6 @@ class OcrRequest(BaseModel):
     lang: str = "deu_frak+deu"
     force: bool = False   # if True, bypass cache and re-run
 
-
 @router.get("/ocr/status")
 async def ocr_status():
     info = {"backend": "tesseract", "ready": False}
@@ -31,14 +30,14 @@ async def ocr_status():
         info["error"] = str(e)
     return JSONResponse(info)
 
-
 @router.post("/ocr")
 async def run_ocr(req: OcrRequest):
     try:
         if req.force:
-            from services.ocr_service import _OCR_CACHE, _cache_key, PIPELINE_VERSION
+            from services.ocr_service import _OCR_CACHE, _cache_key
             key = _cache_key(req.image_url, req.lang)
-            if key in _OCR_CACHE: del _OCR_CACHE[key]
+            if key in _OCR_CACHE:
+                del _OCR_CACHE[key]
         result = await ocr_image_url(req.image_url, req.lang)
         return JSONResponse(result)
     except ValueError as e:
@@ -46,10 +45,8 @@ async def run_ocr(req: OcrRequest):
     except Exception as e:
         raise HTTPException(500, str(e))
 
-
 @router.get("/ocr/all")
 async def ocr_all_pages(manifest_url: str, lang: str = "deu_frak+deu"):
-    # validate manifest_url (public http/https only)
     try:
         validate_public_http_url(manifest_url)
     except ValueError as e:
@@ -71,17 +68,20 @@ async def ocr_all_pages(manifest_url: str, lang: str = "deu_frak+deu"):
             num = page.get("index")
             url = page.get("image") or ""
             if not url:
-                yield f"data: {json.dumps({'page':num,'status':'skip'})}\n\n"
+                yield f"data: {json.dumps({'page': num, 'status': 'skip', 'total': total})}\n\n"
                 continue
 
-            yield f"data: {json.dumps({'page':num,'status':'running','total':total})}\n\n"
+            t0 = time.time()
+            yield f"data: {json.dumps({'page': num, 'status': 'running', 'total': total, 't0': t0})}\n\n"
 
             try:
                 result = await ocr_image_url(url, lang)
-                yield f"data: {json.dumps({'page':num,'status':'done','result':result})}\n\n"
+                dt = time.time() - t0
+                yield f"data: {json.dumps({'page': num, 'status': 'done', 'total': total, 'seconds': dt, 'result': result})}\n\n"
             except Exception as exc:
-                yield f"data: {json.dumps({'page':num,'status':'error','error':str(exc)})}\n\n"
+                dt = time.time() - t0
+                yield f"data: {json.dumps({'page': num, 'status': 'error', 'total': total, 'seconds': dt, 'error': str(exc)})}\n\n"
 
-        yield f"data: {json.dumps({'status':'complete','total':total})}\n\n"
+        yield f"data: {json.dumps({'status': 'complete', 'total': total})}\n\n"
 
     return StreamingResponse(stream(), media_type="text/event-stream")
