@@ -184,3 +184,6 @@ uvicorn app:app --reload --port 8000
 - Crop export depends on backend image fetching; if a server blocks hotlinking or requires auth, cropping may fail.
 
 ---
+## License
+
+MIT © Luana Moraes Costa
