@@ -1,25 +1,57 @@
-# Digitale Zeitungen
+# Digitale Zeitungen — OCR + Facsimile + Annotations (IIIF)
 
-A lightweight web viewer for **historical newspapers**: load an **IIIF (v2/v3) manifest**, run **Tesseract OCR** (incl. Fraktur), inspect **OCR blocks + words**, render a **facsimile layout**, and create **local JSON annotations**.
+A lightweight web viewer for **historical newspapers**:
 
-Planned: **YOLO column detection** (fine-tuned) for better newspaper layout/columns while still using Tesseract.
+- Load an **IIIF Presentation manifest (v2 or v3)**
+- Run **Tesseract OCR** (including **Fraktur**)
+- Inspect OCR **blocks + words**
+- Render a **facsimile layout** positioned by OCR coordinates
+- Perform **keyword search** (page or whole issue)
+- Create **image** and **text-block** annotations
+- Export **TEI XML** and **cropped PNG snippets** of annotated regions
+
+Planned / ideas:
+- YOLO-based column detection (fine-tuned) to improve layout segmentation before OCR
 
 ---
 
 ## Features
 
-- Load any IIIF Presentation manifest (v2 or v3)
-- Image viewer (zoom + pan) and OCR overlay
-- Tesseract OCR with preprocessing tuned for old newspapers
-- Facsimile renderer (blocks positioned by OCR coordinates)
-- Select blocks (and optionally words) for inspection
-- **Annotations** (block/word) saved locally as JSON via API
-- Batch OCR over all pages via SSE ("▶▶ All")
-- Language selector (auto-set from manifest when possible)
+### IIIF
+- Works with IIIF Presentation **v2 and v3**
+- Loads pages from the manifest (images + thumbnails)
+
+### OCR (Tesseract)
+- OCR per page (`▶ OCR`)
+- Batch OCR over all pages via SSE (`▶▶ All`)
+- Preprocessing tuned for historical prints
+- Outputs stable structure:
+  - blocks with normalized bounding boxes (0..1)
+  - words with confidence scores
+
+### Facsimile view
+- “Paper” edition view (blocks positioned using OCR bbox)
+- Keyword highlights rendered inside facsimile blocks
+
+### Analysis (Keyword retrieval)
+- Search by keyword
+- Scope: **this page** or **whole issue**
+- When searching the whole issue, missing OCR pages are run automatically
+- Export keyword results as JSON
+
+### Annotations
+- **Image annotation** (pen tool) → saves bbox (0..1) + label + optional class + note
+- **Text annotation mode** → click a text block (image overlay or facsimile), select excerpt, add label + note
+- Annotated blocks show an **info dot**
+- Clear annotations (page/all) also clears backend JSON storage (if DELETE endpoint is enabled)
+- Export:
+  - JSON
+  - TEI XML (`<facsimile><surface><zone ...>`)
+  - Cropped PNG snippets via backend crop endpoint
 
 ---
 
-## Project structure (current)
+## Project structure
 
 ```
 zeitungen_v5/
@@ -28,7 +60,8 @@ zeitungen_v5/
 ├── api/
 │   ├── manifest.py
 │   ├── ocr.py
-│   └── annotations.py
+│   ├── annotations.py
+│   └── crops.py
 ├── core/
 │   ├── http_client.py
 │   ├── iiif.py
@@ -49,7 +82,7 @@ zeitungen_v5/
 
 Annotations are stored in:
 ```
-data/annotations/<hash-of-manifest>.json
+data/annotations/<sha1-of-manifest-url>.json
 ```
 
 ---
@@ -58,11 +91,14 @@ data/annotations/<hash-of-manifest>.json
 
 ### Python
 Install dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```
 
-### Tesseract (Windows)
+### Tesseract
+
+#### Windows
 Install from:
 https://github.com/UB-Mannheim/tesseract/wiki
 
@@ -71,8 +107,21 @@ During install, enable at least:
 - `deu_frak` (important for pre-1945 newspapers)
 
 Verify:
+
 ```powershell
 & "C:\Program Files\Tesseract-OCR\tesseract.exe" --list-langs
+```
+
+#### macOS (Homebrew)
+```bash
+brew install tesseract
+brew install tesseract-lang
+```
+
+#### Linux (Debian/Ubuntu)
+```bash
+sudo apt-get update
+sudo apt-get install -y tesseract-ocr tesseract-ocr-deu
 ```
 
 ---
@@ -87,28 +136,51 @@ uvicorn app:app --reload --port 8000
 
 ---
 
-## API (quick)
+## API overview
 
-- `GET  /api/manifest?url=...`
-- `POST /api/ocr` with JSON `{ "image_url": "...", "lang": "deu_frak+deu" }`
-- `GET  /api/ocr/all?manifest_url=...&lang=...` (SSE)
+### Manifest
+- `GET /api/manifest?url=...`
+
+### OCR
 - `GET  /api/ocr/status`
-- `GET  /api/annotations?manifest_url=...`
-- `POST /api/annotations` (stores annotation in local JSON)
+- `POST /api/ocr`
+  ```json
+  { "image_url": "...", "lang": "deu_frak+deu", "force": false }
+  ```
+- `GET  /api/ocr/all?manifest_url=...&lang=...` (Server-Sent Events)
+
+### Annotations
+- `GET    /api/annotations?manifest_url=...`
+- `POST   /api/annotations`
+- `DELETE /api/annotations?manifest_url=...&page=...` (optional, if enabled)
+- `DELETE /api/annotations?manifest_url=...` (optional, if enabled)
+
+### Crops (PNG)
+- `POST /api/crop.png`
+  ```json
+  {
+    "image_url": "...",
+    "x1": 0.10, "y1": 0.20, "x2": 0.50, "y2": 0.60,
+    "padding": 10
+  }
+  ```
 
 ---
 
-## Tested manifests
+## Tested manifests (examples)
 
 - IIIF Cookbook Newspaper Issue 1  
   https://iiif.io/api/cookbook/recipe/0068-newspaper/newspaper_issue_1-manifest.json
+
 - IIIF Cookbook Newspaper Issue 2  
   https://iiif.io/api/cookbook/recipe/0068-newspaper/newspaper_issue_2-manifest.json
 
 ---
 
-## Notes for future changes
+## Notes
 
-- OCR output is designed to stay stable: **blocks + words** with normalized bounding boxes.
-- Layout detection is currently Tesseract-based; future plan is to add **YOLO column detection** as a layout stage.
-- Annotations are intentionally simple (local JSON) to keep the project hackable.
+- OCR bounding boxes are normalized (0..1) to remain stable across different image sizes.
+- If your IIIF images are served from private hosts (localhost / intranet), you may need to relax URL validation in `core/security.py` for development.
+- Crop export depends on backend image fetching; if a server blocks hotlinking or requires auth, cropping may fail.
+
+---
